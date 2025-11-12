@@ -1,0 +1,54 @@
+import 'package:flutter/services.dart';
+import 'package:proxy_core/constants/vpn_mode_methods.dart';
+import 'package:proxy_core/models/proxy_core_config.dart';
+
+mixin class VpnModeChannelMixin {
+  static const MethodChannel _methCh = MethodChannel('proxy_core/vpn');
+
+  bool _isVpnRunning = false;
+
+  
+  bool get isVPNRunning => _isVpnRunning;
+
+  
+  Future<ProxyCoreConfig> prepareConfigForVpnIfNeeded(
+      ProxyCoreConfig config) async {
+    if (config.vpnMode) {
+      await _prepareVpnProfile();
+      final fd = await _startVPN();
+      config.parcelFileId = fd;
+    }
+    return config;
+  }
+
+  
+  Future<int> _startVPN() async {
+    final int fd = await _methCh.invokeMethod(VpnModeMethods.startVPN.name);
+    await setVpnStatus();
+    return fd;
+  }
+
+  
+  Future stopVPN() async {
+    await _methCh.invokeMethod(VpnModeMethods.stopVPN.name);
+    await setVpnStatus();
+  }
+
+  
+  Future<bool> setVpnStatus() async {
+    final result = await _methCh.invokeMethod(VpnModeMethods.isVPNRunning.name);
+    
+    _isVpnRunning = result == true || result == 1;
+    return _isVpnRunning;
+  }
+
+  
+  Future<void> _prepareVpnProfile() async =>
+      await _methCh.invokeMethod(VpnModeMethods.prepare.name);
+
+  
+  Future<void> stopAnyRunningVPN() async {
+    await _prepareVpnProfile();
+    await stopVPN();
+  }
+}

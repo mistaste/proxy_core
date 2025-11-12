@@ -1,0 +1,86 @@
+import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
+
+
+
+group = "com.mahsanet.proxy_core"
+version = "1.0"
+
+buildscript {
+    ext {
+        kotlin_version = '2.0.21'
+    }
+    repositories {
+        google()
+        mavenCentral()
+    }
+
+    dependencies {
+        
+        classpath("com.android.tools.build:gradle:7.3.1")
+        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
+    }
+}
+rootProject.allprojects {
+    repositories {
+        google()
+        mavenCentral()
+    }
+}
+
+apply plugin: "com.android.library"
+apply plugin: 'org.jetbrains.kotlin.android'
+dependencies {
+    implementation("androidx.localbroadcastmanager:localbroadcastmanager:1.1.0")
+    implementation("androidx.appcompat:appcompat:1.7.0")
+    implementation("androidx.appcompat:appcompat-resources:1.7.0")
+    implementation('androidx.activity:activity-ktx:1.9.3')
+    implementation('androidx.fragment:fragment-ktx:1.8.5')
+}
+android {
+    if (project.android.hasProperty("namespace")) {
+        namespace = "com.mahsanet.proxy_core"
+    }
+
+    
+    
+    compileSdk = 34
+
+    
+    
+    
+    
+    ndkVersion = "27.0.11902837"
+
+    
+    externalNativeBuild {
+        cmake {
+            path = "CMakeLists.txt"
+
+            
+            
+            
+            
+            
+            
+            
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
+    }
+
+    kotlinOptions {
+        jvmTarget = JavaVersion.VERSION_17
+    }
+
+    defaultConfig {
+        minSdk = 21
+    }
+}
+tasks.withType(KotlinCompile).configureEach {
+    kotlinOptions {
+        languageVersion = "1.9"
+    }
+}

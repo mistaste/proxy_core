@@ -1,0 +1,33 @@
+name: proxy_core_example
+description: "Demonstrates how to use the proxy_core plugin."
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.5.1
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  proxy_core:
+    path: ../
+
+  cupertino_icons: ^1.0.8
+  path_provider: ^2.1.5
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+  flutter_lints: ^5.0.0
+
+
+flutter:
+
+  uses-material-design: true
+
+
+
+
