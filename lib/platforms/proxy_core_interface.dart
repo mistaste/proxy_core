@@ -54,5 +54,15 @@ abstract interface class ProxyCoreInterface {
   Future<Empty> clearLogs();
 
   
+  
+  
+  Future<String> getMemoryUsage();
+
+  
+  
+  
+  Future<String> getCpuUsage();
+
+  
   void ensureInitialized();
 }

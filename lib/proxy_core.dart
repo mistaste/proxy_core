@@ -163,4 +163,18 @@ class ProxyCore {
   
   
   Future<String> get version => _proxyCoreImpl.version;
+
+  
+  
+  
+  
+  
+  Future<String> get memoryUsage => _proxyCoreImpl.getMemoryUsage();
+
+  
+  
+  
+  
+  
+  Future<String> get cpuUsage => _proxyCoreImpl.getCpuUsage();
 }
