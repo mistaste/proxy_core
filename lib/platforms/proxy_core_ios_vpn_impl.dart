@@ -209,4 +209,12 @@ class ProxyCoreIosVpnImpl implements ProxyCoreInterface {
   Future<String> getCpuUsage() async {
     return await _invokeMethod('getCpuUsage', null, 'get cpu usage') ?? "0";
   }
+
+  @override
+  Future<TrafficStatsResponse> getTrafficStats() async {
+    return TrafficStatsResponse(
+      uplinkTotal: Int64.ZERO,
+      downlinkTotal: Int64.ZERO,
+    );
+  }
 }

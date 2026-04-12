@@ -42,6 +42,7 @@ type Core interface {
 	FetchLogs() string
 	ClearLogs() bool
 	CoreName() string
+	GetTrafficStats() (uplink int64, downlink int64)
 }
 
 func init() {
@@ -192,6 +193,18 @@ func (s *server) ClearLogs(ctx context.Context, _ *proxycoreproto.Empty) (*proxy
 	return &proxycoreproto.Empty{}, nil
 }
 
+func (s *server) GetTrafficStats(ctx context.Context, _ *proxycoreproto.Empty) (*proxycoreproto.TrafficStatsResponse, error) {
+	core, err := getActiveCore()
+	if err != nil {
+		return nil, err
+	}
+	uplink, downlink := core.GetTrafficStats()
+	return &proxycoreproto.TrafficStatsResponse{
+		UplinkTotal:   uplink,
+		DownlinkTotal: downlink,
+	}, nil
+}
+
 // -- IOS Delegate Wrappers --
 
 func HandleStartCore(ctx context.Context, req *proxycoreproto.StartCoreRequest) (*proxycoreproto.Empty, error) {
@@ -220,6 +233,9 @@ func HandleFetchLogs(ctx context.Context, req *proxycoreproto.Empty) (*proxycore
 }
 func HandleClearLogs(ctx context.Context, req *proxycoreproto.Empty) (*proxycoreproto.Empty, error) {
 	return (&server{}).ClearLogs(ctx, req)
+}
+func HandleGetTrafficStats(ctx context.Context, req *proxycoreproto.Empty) (*proxycoreproto.TrafficStatsResponse, error) {
+	return (&server{}).GetTrafficStats(ctx, req)
 }
 
 // -- GRPC Server Boot --

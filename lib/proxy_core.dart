@@ -177,4 +177,14 @@ class ProxyCore {
   ///
   /// Returns the CPU usage in percentage.
   Future<String> get cpuUsage => _proxyCoreImpl.getCpuUsage();
+
+  /// Gets cumulative traffic statistics (uplink/downlink bytes)
+  ///
+  /// **iOS**: Returns zeros (not supported via tunnel provider)
+  ///
+  /// **Other platforms**: Queries Xray stats.Manager via gRPC
+  ///
+  /// Requires Xray config to include `"stats":{}` and appropriate `"policy"` section.
+  Future<TrafficStatsResponse> getTrafficStats() =>
+      _proxyCoreImpl.getTrafficStats();
 }

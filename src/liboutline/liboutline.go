@@ -11,7 +11,6 @@ import (
 	"net/netip"
 	"strings"
 	"sync"
-	"syscall"
 	"time"
 
 	"segment/global"
@@ -216,13 +215,7 @@ func (osrv *OutlineService) initSocksServer() {
 }
 
 func (osrv *OutlineService) initListener(ctx context.Context, addrPort netip.AddrPort) error {
-	lc := net.ListenConfig{Control: func(_, _ string, r syscall.RawConn) error {
-		var serr error
-		r.Control(func(fd uintptr) {
-			serr = syscall.SetsockoptInt(int(fd), syscall.SOL_SOCKET, syscall.SO_REUSEADDR, 1)
-		})
-		return serr
-	}}
+	lc := net.ListenConfig{Control: reuseAddrControl}
 
 	listener, err := lc.Listen(ctx, "tcp", addrPort.String())
 	if err != nil {
@@ -317,6 +310,11 @@ func (osrv *OutlineService) MeasurePing(ctx context.Context, urls []string) (*pr
 		return nil, errors.New("no results")
 	}
 	return &proxycoreproto.MeasurePingResponse{Results: results}, nil
+}
+
+// GetTrafficStats returns zeros — Outline does not track traffic counters.
+func (osrv *OutlineService) GetTrafficStats() (uplink int64, downlink int64) {
+	return 0, 0
 }
 
 // Version returns the build version.

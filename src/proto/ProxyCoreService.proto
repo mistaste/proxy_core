@@ -13,6 +13,7 @@ service ProxyCore {
     rpc fetchLogs (Empty) returns (LogResponse);
     rpc clearLogs (Empty) returns (Empty);
     rpc measurePing (MeasurePingRequest) returns (MeasurePingResponse);
+    rpc getTrafficStats (Empty) returns (TrafficStatsResponse);
 }
 
 // ------------------- Requests -------------------
@@ -53,4 +54,9 @@ message PingResult {
     string url = 1;
     int64 delay = 2;
 }
+message TrafficStatsResponse {
+    int64 uplinkTotal = 1;
+    int64 downlinkTotal = 2;
+}
+
 message Empty {}

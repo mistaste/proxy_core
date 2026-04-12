@@ -97,7 +97,8 @@ class ProxyCoreVpnService : VpnService() {
                 cleanupVpnResources()
             }
 
-            val result = createVPNInterface()
+            val blockedApps = intent.getStringArrayListExtra("blockedApps")
+            val result = createVPNInterface(blockedApps)
             if (result != null && result.first != -1) {
                 vpnInterface = result.second
                 vpnFd = result.first
@@ -141,7 +142,7 @@ class ProxyCoreVpnService : VpnService() {
         resultReceiver?.send(fd.takeIf { it >= 0 } ?: -1, null)
     }
 
-    private fun createVPNInterface(): Pair<Int, ParcelFileDescriptor>? {
+    private fun createVPNInterface(blockedApps: List<String>? = null): Pair<Int, ParcelFileDescriptor>? {
         return try {
             Log.i(VpnMethods.TAG, "Creating VPN interface")
 
@@ -163,6 +164,15 @@ class ProxyCoreVpnService : VpnService() {
                     addDisallowedApplication(this@ProxyCoreVpnService.packageName)
                 } catch (e: Exception) {
                     Log.w(VpnMethods.TAG, "Could not exclude own package from VPN", e)
+                }
+
+                // Exclude user-specified apps from VPN (split tunneling)
+                blockedApps?.forEach { pkg ->
+                    try {
+                        addDisallowedApplication(pkg)
+                    } catch (e: Exception) {
+                        Log.w(VpnMethods.TAG, "Could not exclude app from VPN: $pkg", e)
+                    }
                 }
 
                 // Route all traffic through VPN

@@ -144,7 +144,7 @@ class ProxyCorePlugin :
     override fun onMethodCall(call: MethodCall, result: MethodChannel.Result) {
         when (VpnMethods.fromMethodName(call.method)) {
             VpnMethods.PREPARE -> prepareVPN(result)
-            VpnMethods.START_VPN -> startVPN(result)
+            VpnMethods.START_VPN -> startVPN(call, result)
             VpnMethods.STOP_VPN -> stopVPN(result)
             VpnMethods.IS_VPN_RUNNING -> {
                 val intent =
@@ -174,7 +174,7 @@ class ProxyCorePlugin :
         }
     }
 
-    private fun startVPN(result: MethodChannel.Result) {
+    private fun startVPN(call: MethodCall, result: MethodChannel.Result) {
         // Always check permission before starting
         val vpnIntent = VpnService.prepare(applicationContext)
 
@@ -185,11 +185,17 @@ class ProxyCorePlugin :
             return
         }
 
+        // Extract blockedApps from method call arguments
+        val blockedApps = call.argument<List<String>>("blockedApps")
+
         // Permission is valid, proceed with starting VPN
         permissionStatus = VpnPermissionStatus.GRANTED
         val intent = Intent(applicationContext, ProxyCoreVpnService::class.java).apply {
             action = VpnMethods.START_VPN.methodName
             putExtra(VpnMethods.EXTRA_RESULT_RECEIVER, createResultReceiver(result))
+            if (blockedApps != null) {
+                putStringArrayListExtra("blockedApps", ArrayList(blockedApps))
+            }
         }
         applicationContext?.startService(intent)
     }

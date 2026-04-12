@@ -144,6 +144,12 @@ class ProxyCoreBaseImpl
       });
 
   @override
+  Future<TrafficStatsResponse> getTrafficStats() =>
+      _executeGrpcOperation(() async {
+        return await _grpcClient.getTrafficStats(Empty());
+      });
+
+  @override
   void ensureInitialized() {
     if (!_isGrpcServerInitialized) {
       throw ProxyCoreException.message(

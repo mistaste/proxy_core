@@ -63,6 +63,12 @@ abstract interface class ProxyCoreInterface {
   /// Throws [ProxyCoreException] if operation fails
   Future<String> getCpuUsage();
 
+  /// Gets cumulative traffic statistics (uplink/downlink bytes)
+  ///
+  /// Requires Xray config to include "stats":{} and appropriate "policy" section.
+  /// Returns a [TrafficStatsResponse] with uplinkTotal and downlinkTotal.
+  Future<TrafficStatsResponse> getTrafficStats();
+
   /// Ensures a valid initialization state before operations
   void ensureInitialized();
 }

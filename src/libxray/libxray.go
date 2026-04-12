@@ -14,6 +14,7 @@ import (
 
 	xraynet "github.com/GFW-knocker/Xray-core/common/net"
 	"github.com/GFW-knocker/Xray-core/core"
+	"github.com/GFW-knocker/Xray-core/features/stats"
 	_ "github.com/GFW-knocker/Xray-core/main/distro/all"
 )
 
@@ -239,6 +240,36 @@ func (xs *XrayService) MeasurePing(ctx context.Context, urls []string) (*proxyco
 	return &proxycoreproto.MeasurePingResponse{
 		Results: results,
 	}, nil
+}
+
+// GetTrafficStats returns cumulative uplink and downlink bytes from Xray's stats.Manager.
+// Requires the consumer to include "stats":{} and appropriate "policy" in the Xray JSON config.
+func (xs *XrayService) GetTrafficStats() (uplink int64, downlink int64) {
+	xs.mutex.Lock()
+	inst := xs.instance
+	xs.mutex.Unlock()
+
+	if inst == nil {
+		return 0, 0
+	}
+
+	mgr := inst.GetFeature(stats.ManagerType())
+	if mgr == nil {
+		return 0, 0
+	}
+
+	sm, ok := mgr.(stats.Manager)
+	if !ok {
+		return 0, 0
+	}
+
+	if c := sm.GetCounter("outbound>>>proxy>>>traffic>>>uplink"); c != nil {
+		uplink = c.Value()
+	}
+	if c := sm.GetCounter("outbound>>>proxy>>>traffic>>>downlink"); c != nil {
+		downlink = c.Value()
+	}
+	return uplink, downlink
 }
 
 func (xs *XrayService) FetchLogs() string {
