@@ -38,6 +38,9 @@ scripts/*
 android/app/.cxx
 example/android/app/.cxx
 
-*.so
 *.zip
 *.a
+
+# .so files (except pre-built jniLibs which must be in git for CI/git dependencies)
+*.so
+!android/src/main/jniLibs/**/*.so
