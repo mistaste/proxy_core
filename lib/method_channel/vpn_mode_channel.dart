@@ -15,15 +15,21 @@ mixin class VpnModeChannelMixin {
       ProxyCoreConfig config) async {
     if (config.vpnMode) {
       await _prepareVpnProfile();
-      final fd = await _startVPN();
+      final fd = await _startVPN(config.blockedApps);
       config.parcelFileId = fd;
     }
     return config;
   }
 
   
-  Future<int> _startVPN() async {
-    final int fd = await _methCh.invokeMethod(VpnModeMethods.startVPN.name);
+  Future<int> _startVPN(List<String>? blockedApps) async {
+    final int fd = await _methCh.invokeMethod(
+      VpnModeMethods.startVPN.name,
+      <String, dynamic>{
+        if (blockedApps != null && blockedApps.isNotEmpty)
+          'blockedApps': blockedApps,
+      },
+    );
     await setVpnStatus();
     return fd;
   }

@@ -393,26 +393,28 @@ func (x *PingResult) GetDelay() int64 {
 	return 0
 }
 
-type Empty struct {
+type TrafficStatsResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
+	UplinkTotal   int64                  `protobuf:"varint,1,opt,name=uplinkTotal,proto3" json:"uplinkTotal,omitempty"`
+	DownlinkTotal int64                  `protobuf:"varint,2,opt,name=downlinkTotal,proto3" json:"downlinkTotal,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *Empty) Reset() {
-	*x = Empty{}
+func (x *TrafficStatsResponse) Reset() {
+	*x = TrafficStatsResponse{}
 	mi := &file_proto_ProxyCoreService_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *Empty) String() string {
+func (x *TrafficStatsResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*Empty) ProtoMessage() {}
+func (*TrafficStatsResponse) ProtoMessage() {}
 
-func (x *Empty) ProtoReflect() protoreflect.Message {
+func (x *TrafficStatsResponse) ProtoReflect() protoreflect.Message {
 	mi := &file_proto_ProxyCoreService_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -425,8 +427,58 @@ func (x *Empty) ProtoReflect() protoreflect.Message {
 }
 
 
-func (*Empty) Descriptor() ([]byte, []int) {
+func (*TrafficStatsResponse) Descriptor() ([]byte, []int) {
 	return file_proto_ProxyCoreService_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *TrafficStatsResponse) GetUplinkTotal() int64 {
+	if x != nil {
+		return x.UplinkTotal
+	}
+	return 0
+}
+
+func (x *TrafficStatsResponse) GetDownlinkTotal() int64 {
+	if x != nil {
+		return x.DownlinkTotal
+	}
+	return 0
+}
+
+type Empty struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *Empty) Reset() {
+	*x = Empty{}
+	mi := &file_proto_ProxyCoreService_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Empty) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Empty) ProtoMessage() {}
+
+func (x *Empty) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_ProxyCoreService_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+
+func (*Empty) Descriptor() ([]byte, []int) {
+	return file_proto_ProxyCoreService_proto_rawDescGZIP(), []int{8}
 }
 
 var File_proto_ProxyCoreService_proto protoreflect.FileDescriptor
@@ -456,8 +508,11 @@ const file_proto_ProxyCoreService_proto_rawDesc = "" +
 	"\n" +
 	"PingResult\x12\x10\n" +
 	"\x03url\x18\x01 \x01(\tR\x03url\x12\x14\n" +
-	"\x05delay\x18\x02 \x01(\x03R\x05delay\"\a\n" +
-	"\x05Empty2\xa8\x03\n" +
+	"\x05delay\x18\x02 \x01(\x03R\x05delay\"^\n" +
+	"\x14TrafficStatsResponse\x12 \n" +
+	"\vuplinkTotal\x18\x01 \x01(\x03R\vuplinkTotal\x12$\n" +
+	"\rdownlinkTotal\x18\x02 \x01(\x03R\rdownlinkTotal\"\a\n" +
+	"\x05Empty2\xee\x03\n" +
 	"\tProxyCore\x12:\n" +
 	"\tstartCore\x12\x1b.ProxyCore.StartCoreRequest\x1a\x10.ProxyCore.Empty\x12.\n" +
 	"\bstopCore\x12\x10.ProxyCore.Empty\x1a\x10.ProxyCore.Empty\x12=\n" +
@@ -466,7 +521,8 @@ const file_proto_ProxyCoreService_proto_rawDesc = "" +
 	"getVersion\x12\x10.ProxyCore.Empty\x1a\x1a.ProxyCore.VersionResponse\x125\n" +
 	"\tfetchLogs\x12\x10.ProxyCore.Empty\x1a\x16.ProxyCore.LogResponse\x12/\n" +
 	"\tclearLogs\x12\x10.ProxyCore.Empty\x1a\x10.ProxyCore.Empty\x12L\n" +
-	"\vmeasurePing\x12\x1d.ProxyCore.MeasurePingRequest\x1a\x1e.ProxyCore.MeasurePingResponseB\x11Z\x0fproxycoreproto/b\x06proto3"
+	"\vmeasurePing\x12\x1d.ProxyCore.MeasurePingRequest\x1a\x1e.ProxyCore.MeasurePingResponse\x12D\n" +
+	"\x0fgetTrafficStats\x12\x10.ProxyCore.Empty\x1a\x1f.ProxyCore.TrafficStatsResponseB\x11Z\x0fproxycoreproto/b\x06proto3"
 
 var (
 	file_proto_ProxyCoreService_proto_rawDescOnce sync.Once
@@ -480,34 +536,37 @@ func file_proto_ProxyCoreService_proto_rawDescGZIP() []byte {
 	return file_proto_ProxyCoreService_proto_rawDescData
 }
 
-var file_proto_ProxyCoreService_proto_msgTypes = make([]protoimpl.MessageInfo, 8)
+var file_proto_ProxyCoreService_proto_msgTypes = make([]protoimpl.MessageInfo, 9)
 var file_proto_ProxyCoreService_proto_goTypes = []any{
-	(*StartCoreRequest)(nil),    
-	(*MeasurePingRequest)(nil),  
-	(*BooleanResponse)(nil),     
-	(*VersionResponse)(nil),     
-	(*LogResponse)(nil),         
-	(*MeasurePingResponse)(nil), 
-	(*PingResult)(nil),          
-	(*Empty)(nil),               
+	(*StartCoreRequest)(nil),     
+	(*MeasurePingRequest)(nil),   
+	(*BooleanResponse)(nil),      
+	(*VersionResponse)(nil),      
+	(*LogResponse)(nil),          
+	(*MeasurePingResponse)(nil),  
+	(*PingResult)(nil),           
+	(*TrafficStatsResponse)(nil), 
+	(*Empty)(nil),                
 }
 var file_proto_ProxyCoreService_proto_depIdxs = []int32{
 	6, 
 	0, 
-	7, 
-	7, 
-	7, 
-	7, 
-	7, 
+	8, 
+	8, 
+	8, 
+	8, 
+	8, 
 	1, 
-	7, 
-	7, 
+	8, 
+	8, 
+	8, 
 	2, 
 	3, 
 	4, 
-	7, 
-	5, 
 	8, 
+	5, 
+	7, 
+	9, 
 	1, 
 	1, 
 	1, 
@@ -525,7 +584,7 @@ func file_proto_ProxyCoreService_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_proto_ProxyCoreService_proto_rawDesc), len(file_proto_ProxyCoreService_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   8,
+			NumMessages:   9,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

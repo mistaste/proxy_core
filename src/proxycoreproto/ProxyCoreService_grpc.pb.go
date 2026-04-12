@@ -19,13 +19,14 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	ProxyCore_StartCore_FullMethodName     = "/ProxyCore.ProxyCore/startCore"
-	ProxyCore_StopCore_FullMethodName      = "/ProxyCore.ProxyCore/stopCore"
-	ProxyCore_IsCoreRunning_FullMethodName = "/ProxyCore.ProxyCore/isCoreRunning"
-	ProxyCore_GetVersion_FullMethodName    = "/ProxyCore.ProxyCore/getVersion"
-	ProxyCore_FetchLogs_FullMethodName     = "/ProxyCore.ProxyCore/fetchLogs"
-	ProxyCore_ClearLogs_FullMethodName     = "/ProxyCore.ProxyCore/clearLogs"
-	ProxyCore_MeasurePing_FullMethodName   = "/ProxyCore.ProxyCore/measurePing"
+	ProxyCore_StartCore_FullMethodName       = "/ProxyCore.ProxyCore/startCore"
+	ProxyCore_StopCore_FullMethodName        = "/ProxyCore.ProxyCore/stopCore"
+	ProxyCore_IsCoreRunning_FullMethodName   = "/ProxyCore.ProxyCore/isCoreRunning"
+	ProxyCore_GetVersion_FullMethodName      = "/ProxyCore.ProxyCore/getVersion"
+	ProxyCore_FetchLogs_FullMethodName       = "/ProxyCore.ProxyCore/fetchLogs"
+	ProxyCore_ClearLogs_FullMethodName       = "/ProxyCore.ProxyCore/clearLogs"
+	ProxyCore_MeasurePing_FullMethodName     = "/ProxyCore.ProxyCore/measurePing"
+	ProxyCore_GetTrafficStats_FullMethodName = "/ProxyCore.ProxyCore/getTrafficStats"
 )
 
 
@@ -41,6 +42,7 @@ type ProxyCoreClient interface {
 	FetchLogs(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*LogResponse, error)
 	ClearLogs(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*Empty, error)
 	MeasurePing(ctx context.Context, in *MeasurePingRequest, opts ...grpc.CallOption) (*MeasurePingResponse, error)
+	GetTrafficStats(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*TrafficStatsResponse, error)
 }
 
 type proxyCoreClient struct {
@@ -121,6 +123,16 @@ func (c *proxyCoreClient) MeasurePing(ctx context.Context, in *MeasurePingReques
 	return out, nil
 }
 
+func (c *proxyCoreClient) GetTrafficStats(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*TrafficStatsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(TrafficStatsResponse)
+	err := c.cc.Invoke(ctx, ProxyCore_GetTrafficStats_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 
 
 
@@ -134,6 +146,7 @@ type ProxyCoreServer interface {
 	FetchLogs(context.Context, *Empty) (*LogResponse, error)
 	ClearLogs(context.Context, *Empty) (*Empty, error)
 	MeasurePing(context.Context, *MeasurePingRequest) (*MeasurePingResponse, error)
+	GetTrafficStats(context.Context, *Empty) (*TrafficStatsResponse, error)
 	mustEmbedUnimplementedProxyCoreServer()
 }
 
@@ -145,25 +158,28 @@ type ProxyCoreServer interface {
 type UnimplementedProxyCoreServer struct{}
 
 func (UnimplementedProxyCoreServer) StartCore(context.Context, *StartCoreRequest) (*Empty, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method StartCore not implemented")
+	return nil, status.Error(codes.Unimplemented, "method StartCore not implemented")
 }
 func (UnimplementedProxyCoreServer) StopCore(context.Context, *Empty) (*Empty, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method StopCore not implemented")
+	return nil, status.Error(codes.Unimplemented, "method StopCore not implemented")
 }
 func (UnimplementedProxyCoreServer) IsCoreRunning(context.Context, *Empty) (*BooleanResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method IsCoreRunning not implemented")
+	return nil, status.Error(codes.Unimplemented, "method IsCoreRunning not implemented")
 }
 func (UnimplementedProxyCoreServer) GetVersion(context.Context, *Empty) (*VersionResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GetVersion not implemented")
+	return nil, status.Error(codes.Unimplemented, "method GetVersion not implemented")
 }
 func (UnimplementedProxyCoreServer) FetchLogs(context.Context, *Empty) (*LogResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method FetchLogs not implemented")
+	return nil, status.Error(codes.Unimplemented, "method FetchLogs not implemented")
 }
 func (UnimplementedProxyCoreServer) ClearLogs(context.Context, *Empty) (*Empty, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ClearLogs not implemented")
+	return nil, status.Error(codes.Unimplemented, "method ClearLogs not implemented")
 }
 func (UnimplementedProxyCoreServer) MeasurePing(context.Context, *MeasurePingRequest) (*MeasurePingResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method MeasurePing not implemented")
+	return nil, status.Error(codes.Unimplemented, "method MeasurePing not implemented")
+}
+func (UnimplementedProxyCoreServer) GetTrafficStats(context.Context, *Empty) (*TrafficStatsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetTrafficStats not implemented")
 }
 func (UnimplementedProxyCoreServer) mustEmbedUnimplementedProxyCoreServer() {}
 func (UnimplementedProxyCoreServer) testEmbeddedByValue()                   {}
@@ -312,6 +328,24 @@ func _ProxyCore_MeasurePing_Handler(srv interface{}, ctx context.Context, dec fu
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ProxyCore_GetTrafficStats_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(Empty)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ProxyCoreServer).GetTrafficStats(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ProxyCore_GetTrafficStats_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ProxyCoreServer).GetTrafficStats(ctx, req.(*Empty))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 
 
 
@@ -346,6 +380,10 @@ var ProxyCore_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "measurePing",
 			Handler:    _ProxyCore_MeasurePing_Handler,
+		},
+		{
+			MethodName: "getTrafficStats",
+			Handler:    _ProxyCore_GetTrafficStats_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

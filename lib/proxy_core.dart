@@ -177,4 +177,14 @@ class ProxyCore {
   
   
   Future<String> get cpuUsage => _proxyCoreImpl.getCpuUsage();
+
+  
+  
+  
+  
+  
+  
+  
+  Future<TrafficStatsResponse> getTrafficStats() =>
+      _proxyCoreImpl.getTrafficStats();
 }

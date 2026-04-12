@@ -9,7 +9,6 @@
 
 
 
-
 import 'dart:convert' as $convert;
 import 'dart:core' as $core;
 import 'dart:typed_data' as $typed_data;
@@ -109,6 +108,20 @@ const PingResult$json = {
 
 final $typed_data.Uint8List pingResultDescriptor = $convert.base64Decode(
     'CgpQaW5nUmVzdWx0EhAKA3VybBgBIAEoCVIDdXJsEhQKBWRlbGF5GAIgASgDUgVkZWxheQ==');
+
+@$core.Deprecated('Use trafficStatsResponseDescriptor instead')
+const TrafficStatsResponse$json = {
+  '1': 'TrafficStatsResponse',
+  '2': [
+    {'1': 'uplinkTotal', '3': 1, '4': 1, '5': 3, '10': 'uplinkTotal'},
+    {'1': 'downlinkTotal', '3': 2, '4': 1, '5': 3, '10': 'downlinkTotal'},
+  ],
+};
+
+
+final $typed_data.Uint8List trafficStatsResponseDescriptor = $convert.base64Decode(
+    'ChRUcmFmZmljU3RhdHNSZXNwb25zZRIgCgt1cGxpbmtUb3RhbBgBIAEoA1ILdXBsaW5rVG90YW'
+    'wSJAoNZG93bmxpbmtUb3RhbBgCIAEoA1INZG93bmxpbmtUb3RhbA==');
 
 @$core.Deprecated('Use emptyDescriptor instead')
 const Empty$json = {

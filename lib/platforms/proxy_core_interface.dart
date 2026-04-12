@@ -64,5 +64,11 @@ abstract interface class ProxyCoreInterface {
   Future<String> getCpuUsage();
 
   
+  
+  
+  
+  Future<TrafficStatsResponse> getTrafficStats();
+
+  
   void ensureInitialized();
 }

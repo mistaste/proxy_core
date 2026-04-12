@@ -11,7 +11,8 @@ class ProxyCoreConfig {
   final bool isString;
   final int proxyPort;
   final bool _vpnMode;
-  late final int? _parcelFileId;
+  final List<String>? blockedApps;
+  int? _parcelFileId;
 
   ProxyCoreConfig.inProxyMode({
     this.core = CoreNames.xray,
@@ -21,6 +22,7 @@ class ProxyCoreConfig {
     this.isString = true,
     this.proxyPort = 2080,
   })  : _vpnMode = false,
+        blockedApps = null,
         _parcelFileId = null {
     if (Platform.isIOS) {
       throw ProxyCoreException('Proxy Mode is not supported on iOS');
@@ -34,6 +36,7 @@ class ProxyCoreConfig {
     this.memory = 128,
     this.isString = true,
     this.proxyPort = 2080,
+    this.blockedApps,
   }) : _vpnMode = true;
 
   bool get vpnMode => _vpnMode;
@@ -55,8 +58,9 @@ class ProxyCoreConfig {
       ..isVpnMode = _vpnMode
       ..proxyPort = proxyPort;
 
-    if (_vpnMode && _parcelFileId != null) {
-      request.tunFD = _parcelFileId;
+    final pfd = _parcelFileId;
+    if (_vpnMode && pfd != null) {
+      request.tunFD = pfd;
     }
 
     return request;
