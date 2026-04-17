@@ -18,6 +18,7 @@ import (
 	"github.com/Microsoft/go-winio"
 
 	"segment/libtun"
+	singbox "segment/singbox_win"
 )
 
 // PipeName is the named pipe address the service listens on. The Flutter
@@ -167,17 +168,20 @@ func (s *Server) dispatch(req *Request) Response {
 		if p.Proxy == "" {
 			return Response{ID: req.ID, OK: false, Error: "proxy is required"}
 		}
-		if err := libtun.StartWintun(p.Adapter, p.Proxy, p.Server, p.MTU); err != nil {
+		// sing-box (system stack) replaces the gVisor-based tun2socks
+		// engine — same wintun adapter lifecycle, much faster L3→L4
+		// translation on Windows.
+		if err := singbox.StartBridge(p.Adapter, p.Proxy, p.Server, p.MTU); err != nil {
 			return Response{ID: req.ID, OK: false, Error: err.Error()}
 		}
 		return Response{ID: req.ID, OK: true}
 
 	case "stop_vpn":
-		libtun.Stop()
+		singbox.StopBridge()
 		return Response{ID: req.ID, OK: true}
 
 	case "is_running":
-		return Response{ID: req.ID, OK: true, Result: libtun.IsStarted()}
+		return Response{ID: req.ID, OK: true, Result: singbox.IsStarted()}
 
 	default:
 		return Response{ID: req.ID, OK: false, Error: "unknown method: " + req.Method}
@@ -187,6 +191,12 @@ func (s *Server) dispatch(req *Request) Response {
 // StopActiveSession is invoked by the service lifecycle on shutdown so
 // the TUN is torn down cleanly before the process exits.
 func StopActiveSession() {
+	if singbox.IsStarted() {
+		singbox.StopBridge()
+	}
+	// libtun may still hold state from a pre-sing-box build or a stale
+	// crashed run — clean that up too so the wintun adapter and its
+	// routes are fully gone before exit.
 	if libtun.IsStarted() {
 		libtun.Stop()
 	}
