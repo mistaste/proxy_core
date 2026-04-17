@@ -69,9 +69,32 @@ loop:
 	return false, 0
 }
 
+func setupFileLog() {
+	dir := os.Getenv("ProgramData")
+	if dir == "" {
+		dir = `C:\ProgramData`
+	}
+	dir = filepath.Join(dir, "Guardex")
+	_ = os.MkdirAll(dir, 0755)
+	f, err := os.OpenFile(filepath.Join(dir, "service.log"),
+		os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		return
+	}
+	log.SetOutput(f)
+	log.SetFlags(log.LstdFlags | log.Lmicroseconds)
+}
+
 func main() {
 	if len(os.Args) < 2 {
 		// Launched by SCM.
+		setupFileLog()
+		log.Println("guardexsvc: starting (SCM mode)")
+		defer func() {
+			if r := recover(); r != nil {
+				log.Printf("guardexsvc: top-level panic: %v", r)
+			}
+		}()
 		if err := svc.Run(serviceName, guardexService{}); err != nil {
 			log.Fatalf("service run: %v", err)
 		}
