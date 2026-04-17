@@ -8,6 +8,7 @@ import (
 	"os/exec"
 	"strings"
 	"syscall"
+	"time"
 
 	"github.com/xjasonlyu/tun2socks/v2/engine"
 )
@@ -66,6 +67,10 @@ func StartWintun(adapterName, proxyAddress, serverIP string, mtu int) error {
 	key.TCPModerateReceiveBuffer = true
 	key.TCPSendBufferSize = "4m"
 	key.TCPReceiveBufferSize = "4m"
+	
+	
+	
+	key.UDPTimeout = 3 * time.Minute
 	engine.Insert(key)
 	engine.Start()
 
@@ -81,9 +86,12 @@ func StartWintun(adapterName, proxyAddress, serverIP string, mtu int) error {
 		
 		_ = runNetsh("interface", "ipv4", "delete", "route",
 			serverIP+"/32", "interface="+winState.origInterfaceIdx)
+		
+		
+		
 		if err := runNetsh("interface", "ipv4", "add", "route",
 			serverIP+"/32", "interface="+winState.origInterfaceIdx,
-			"nexthop="+winState.origGateway, "metric=1", "store=active"); err == nil {
+			"nexthop="+winState.origGateway, "metric=0", "store=active"); err == nil {
 			winState.addedException = true
 		}
 	}
