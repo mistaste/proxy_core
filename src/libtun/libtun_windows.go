@@ -55,7 +55,9 @@ func StartWintun(adapterName, proxyAddress, serverIP string, mtu int) error {
 		mtu = 1500
 	}
 
-	key.Device = fmt.Sprintf("wintun://%s", adapterName)
+	// tun2socks' Windows TUN driver (wintun under the hood) registers
+	// under the "tun" scheme. "wintun://" is not a valid driver name.
+	key.Device = fmt.Sprintf("tun://%s", adapterName)
 	key.Proxy = fmt.Sprintf("socks5://%s", proxyAddress)
 	key.MTU = mtu
 	key.LogLevel = "info"
