@@ -116,9 +116,19 @@ func (s *Server) serveConn(conn net.Conn) {
 			writeResp(w, Response{ID: req.ID, OK: false, Error: "bad json: " + err.Error()})
 			continue
 		}
-		resp := s.dispatch(&req)
+		resp := s.safeDispatch(&req)
 		writeResp(w, resp)
 	}
+}
+
+func (s *Server) safeDispatch(req *Request) (resp Response) {
+	defer func() {
+		if r := recover(); r != nil {
+			log.Printf("panic in dispatch method=%s: %v", req.Method, r)
+			resp = Response{ID: req.ID, OK: false, Error: fmt.Sprintf("panic: %v", r)}
+		}
+	}()
+	return s.dispatch(req)
 }
 
 func writeResp(w *bufio.Writer, resp Response) {
