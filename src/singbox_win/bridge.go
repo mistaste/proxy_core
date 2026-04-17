@@ -155,6 +155,10 @@ func IsStarted() bool {
 
 
 func buildConfig(adapter, socksHost string, socksPort, mtu int) []byte {
+	
+	
+	
+	
 	return fmt.Appendf(nil, `{
   "log": {"level": "warn", "disabled": false},
   "inbounds": [{
@@ -165,8 +169,7 @@ func buildConfig(adapter, socksHost string, socksPort, mtu int) []byte {
     "mtu": %d,
     "auto_route": true,
     "strict_route": false,
-    "stack": "system",
-    "sniff": true
+    "stack": "system"
   }],
   "outbounds": [{
     "type": "socks",
