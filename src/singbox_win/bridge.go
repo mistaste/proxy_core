@@ -155,6 +155,10 @@ func IsStarted() bool {
 // through the tun. strict_route=false keeps Windows tolerant of IPv6
 // and link-local traffic so nothing else dies.
 func buildConfig(adapter, socksHost string, socksPort, mtu int) []byte {
+	// Inbound-level "sniff" was removed in sing-box 1.13 — it is now a
+	// route-rule action. For a tun→socks bridge we don't need it at all:
+	// Xray on the other side handles any SNI/Host sniffing it wants,
+	// and our only outbound is a single socks tunnel anyway.
 	return fmt.Appendf(nil, `{
   "log": {"level": "warn", "disabled": false},
   "inbounds": [{
@@ -165,8 +169,7 @@ func buildConfig(adapter, socksHost string, socksPort, mtu int) []byte {
     "mtu": %d,
     "auto_route": true,
     "strict_route": false,
-    "stack": "system",
-    "sniff": true
+    "stack": "system"
   }],
   "outbounds": [{
     "type": "socks",
