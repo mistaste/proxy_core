@@ -35,6 +35,7 @@ flutter:
         pluginClass: ProxyCorePlugin
   
       windows:
+        pluginClass: ProxyCorePluginCApi
         ffiPlugin: true
       macos:
         ffiPlugin: true

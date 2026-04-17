@@ -57,4 +57,30 @@ mixin class VpnModeChannelMixin {
     await _prepareVpnProfile();
     await stopVPN();
   }
+
+  /// Start the VPN on Windows using the wintun-based TUN engine.
+  ///
+  /// [adapterName] — name for the wintun adapter (e.g. "Guardex").
+  /// [proxyAddress] — "host:port" of local SOCKS5 proxy.
+  /// [serverIP] — public IP of the remote VPN server; added as /32
+  /// exception through the original gateway so the encrypted tunnel
+  /// to the server itself does not loop through the TUN.
+  /// [mtu] — link MTU; pass 0 for default 1500.
+  Future<void> startVPNWindows({
+    required String adapterName,
+    required String proxyAddress,
+    required String serverIP,
+    int mtu = 1500,
+  }) async {
+    await _methCh.invokeMethod(
+      'startVPNWindows',
+      <String, dynamic>{
+        'adapterName': adapterName,
+        'proxyAddress': proxyAddress,
+        'serverIP': serverIP,
+        'mtu': mtu,
+      },
+    );
+    await setVpnStatus();
+  }
 }
