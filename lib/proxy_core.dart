@@ -176,6 +176,45 @@ class ProxyCore {
   
   
   
+  
+  
+  
+  
+  
+  
+  
+  
+  Future<void> startWindowsTun({
+    required String adapterName,
+    required String proxyAddress,
+    required String serverIP,
+    int mtu = 1500,
+  }) async {
+    if (!Platform.isWindows) return;
+    if (_proxyCoreImpl is ProxyCoreBaseImpl) {
+      await (_proxyCoreImpl as ProxyCoreBaseImpl).startVPNWindows(
+        adapterName: adapterName,
+        proxyAddress: proxyAddress,
+        serverIP: serverIP,
+        mtu: mtu,
+      );
+    }
+  }
+
+  
+  
+  Future<void> stopWindowsTun() async {
+    if (!Platform.isWindows) return;
+    if (_proxyCoreImpl is ProxyCoreBaseImpl) {
+      await (_proxyCoreImpl as ProxyCoreBaseImpl).stopVPN();
+    }
+  }
+
+  
+  
+  
+  
+  
   Future<String> get cpuUsage => _proxyCoreImpl.getCpuUsage();
 
   
