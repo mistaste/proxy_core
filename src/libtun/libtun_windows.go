@@ -61,6 +61,11 @@ func StartWintun(adapterName, proxyAddress, serverIP string, mtu int) error {
 	key.Proxy = fmt.Sprintf("socks5://%s", proxyAddress)
 	key.MTU = mtu
 	key.LogLevel = "info"
+	
+	
+	key.TCPModerateReceiveBuffer = true
+	key.TCPSendBufferSize = "4m"
+	key.TCPReceiveBufferSize = "4m"
 	engine.Insert(key)
 	engine.Start()
 
