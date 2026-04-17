@@ -13,6 +13,7 @@
 #include <mutex>
 #include <sstream>
 #include <string>
+#include <thread>
 #include <vector>
 
 #pragma comment(lib, "advapi32.lib")
@@ -288,58 +289,71 @@ void ProxyCorePlugin::HandleMethodCall(
   }
 
   if (method == "ensureService") {
-    ServiceStatus st = QueryGuardexService();
-    if (!st.installed) {
-      int rc = RunElevated(L"install");
-      if (rc == -1) {
-        result->Error("elevation_cancelled",
-                      "user declined UAC prompt for service install");
+    // Run elevation + SCM polling on a worker thread so the Flutter
+    // platform thread (which is also the UI thread on Windows) stays free
+    // to render frames. Blocking it here — even briefly — causes visible
+    // jank when the user taps Connect.
+    std::shared_ptr<flutter::MethodResult<flutter::EncodableValue>>
+        shared_result(std::move(result));
+    std::thread([shared_result]() {
+      ServiceStatus st = QueryGuardexService();
+      if (!st.installed) {
+        int rc = RunElevated(L"install");
+        if (rc == -1) {
+          shared_result->Error("elevation_cancelled",
+                               "user declined UAC prompt for service install");
+          return;
+        }
+        if (rc != 0) {
+          std::ostringstream msg;
+          msg << "guardexsvc install exited with " << rc;
+          shared_result->Error("install_failed", msg.str());
+          return;
+        }
+      }
+      st = QueryGuardexService();
+      if (!st.running) {
+        int rc = RunElevated(L"start");
+        if (rc == -1) {
+          shared_result->Error("elevation_cancelled",
+                               "user declined UAC prompt for service start");
+          return;
+        }
+        if (rc != 0) {
+          std::ostringstream msg;
+          msg << "guardexsvc start exited with " << rc;
+          shared_result->Error("start_failed", msg.str());
+          return;
+        }
+      }
+      if (!WaitForServiceRunning(5000)) {
+        shared_result->Error("not_running",
+                             "service did not reach RUNNING within 5s");
         return;
       }
-      if (rc != 0) {
-        std::ostringstream msg;
-        msg << "guardexsvc install exited with " << rc;
-        result->Error("install_failed", msg.str());
-        return;
-      }
-    }
-    st = QueryGuardexService();
-    if (!st.running) {
-      int rc = RunElevated(L"start");
-      if (rc == -1) {
-        result->Error("elevation_cancelled",
-                      "user declined UAC prompt for service start");
-        return;
-      }
-      if (rc != 0) {
-        std::ostringstream msg;
-        msg << "guardexsvc start exited with " << rc;
-        result->Error("start_failed", msg.str());
-        return;
-      }
-    }
-    if (!WaitForServiceRunning(5000)) {
-      result->Error("not_running",
-                    "service did not reach RUNNING within 5s");
-      return;
-    }
-    result->Success(flutter::EncodableValue(nullptr));
+      shared_result->Success(flutter::EncodableValue(nullptr));
+    }).detach();
     return;
   }
 
   if (method == "uninstallService") {
-    int rc = RunElevated(L"uninstall");
-    if (rc == -1) {
-      result->Error("elevation_cancelled", "user declined UAC prompt");
-      return;
-    }
-    if (rc != 0) {
-      std::ostringstream msg;
-      msg << "guardexsvc uninstall exited with " << rc;
-      result->Error("uninstall_failed", msg.str());
-      return;
-    }
-    result->Success(flutter::EncodableValue(nullptr));
+    std::shared_ptr<flutter::MethodResult<flutter::EncodableValue>>
+        shared_result(std::move(result));
+    std::thread([shared_result]() {
+      int rc = RunElevated(L"uninstall");
+      if (rc == -1) {
+        shared_result->Error("elevation_cancelled",
+                             "user declined UAC prompt");
+        return;
+      }
+      if (rc != 0) {
+        std::ostringstream msg;
+        msg << "guardexsvc uninstall exited with " << rc;
+        shared_result->Error("uninstall_failed", msg.str());
+        return;
+      }
+      shared_result->Success(flutter::EncodableValue(nullptr));
+    }).detach();
     return;
   }
 

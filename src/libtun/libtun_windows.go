@@ -8,6 +8,7 @@ import (
 	"os/exec"
 	"strings"
 	"syscall"
+	"time"
 
 	"github.com/xjasonlyu/tun2socks/v2/engine"
 )
@@ -66,6 +67,10 @@ func StartWintun(adapterName, proxyAddress, serverIP string, mtu int) error {
 	key.TCPModerateReceiveBuffer = true
 	key.TCPSendBufferSize = "4m"
 	key.TCPReceiveBufferSize = "4m"
+	// Default is 60s — too short for long-idle UDP flows like DNS,
+	// QUIC and games. 3 min matches common VPN client defaults and
+	// stops premature session teardown that forces TCP fallback.
+	key.UDPTimeout = 3 * time.Minute
 	engine.Insert(key)
 	engine.Start()
 
@@ -81,9 +86,12 @@ func StartWintun(adapterName, proxyAddress, serverIP string, mtu int) error {
 		// Clear any stale /32 exception left over from a previous run.
 		_ = runNetsh("interface", "ipv4", "delete", "route",
 			serverIP+"/32", "interface="+winState.origInterfaceIdx)
+		// metric=0 so this /32 always wins against the tun's 0.0.0.0/0
+		// at metric=1. Without this, tied metrics let Windows ECMP-split
+		// traffic between the two adapters, causing packet reordering.
 		if err := runNetsh("interface", "ipv4", "add", "route",
 			serverIP+"/32", "interface="+winState.origInterfaceIdx,
-			"nexthop="+winState.origGateway, "metric=1", "store=active"); err == nil {
+			"nexthop="+winState.origGateway, "metric=0", "store=active"); err == nil {
 			winState.addedException = true
 		}
 	}
