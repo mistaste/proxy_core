@@ -58,6 +58,35 @@ mixin class VpnModeChannelMixin {
     await stopVPN();
   }
 
+  /// Queries whether the privileged Guardex Windows service is
+  /// installed and currently running. Returns a map with keys
+  /// `installed` and `running`, both `false` on non-Windows platforms.
+  Future<Map<String, bool>> windowsServiceStatus() async {
+    final dynamic raw = await _methCh.invokeMethod('serviceStatus');
+    if (raw is Map) {
+      return <String, bool>{
+        'installed': raw['installed'] == true,
+        'running': raw['running'] == true,
+      };
+    }
+    return <String, bool>{'installed': false, 'running': false};
+  }
+
+  /// Ensures the Guardex Windows service is installed and running.
+  /// Triggers one or two UAC prompts (install, then start) the first
+  /// time only; subsequent calls are fast no-ops.
+  ///
+  /// Throws a [PlatformException] with code `elevation_cancelled` if
+  /// the user declines the UAC dialog.
+  Future<void> ensureWindowsService() async {
+    await _methCh.invokeMethod('ensureService');
+  }
+
+  /// Uninstalls the Guardex Windows service. Prompts for UAC.
+  Future<void> uninstallWindowsService() async {
+    await _methCh.invokeMethod('uninstallService');
+  }
+
   /// Start the VPN on Windows using the wintun-based TUN engine.
   ///
   /// [adapterName] — name for the wintun adapter (e.g. "Guardex").

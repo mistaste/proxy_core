@@ -210,6 +210,37 @@ class ProxyCore {
     }
   }
 
+  /// Returns whether the privileged Guardex Windows service is installed
+  /// and running. Always reports both fields as `false` on non-Windows.
+  Future<Map<String, bool>> windowsServiceStatus() async {
+    if (!Platform.isWindows) {
+      return const <String, bool>{'installed': false, 'running': false};
+    }
+    if (_proxyCoreImpl is ProxyCoreBaseImpl) {
+      return (_proxyCoreImpl as ProxyCoreBaseImpl).windowsServiceStatus();
+    }
+    return const <String, bool>{'installed': false, 'running': false};
+  }
+
+  /// Installs and starts the Guardex Windows service if it is not
+  /// already running. Triggers the UAC prompt on first call only;
+  /// subsequent calls are fast no-ops. No-op on non-Windows platforms.
+  Future<void> ensureWindowsService() async {
+    if (!Platform.isWindows) return;
+    if (_proxyCoreImpl is ProxyCoreBaseImpl) {
+      await (_proxyCoreImpl as ProxyCoreBaseImpl).ensureWindowsService();
+    }
+  }
+
+  /// Uninstalls the Guardex Windows service. Triggers a UAC prompt.
+  /// No-op on non-Windows platforms.
+  Future<void> uninstallWindowsService() async {
+    if (!Platform.isWindows) return;
+    if (_proxyCoreImpl is ProxyCoreBaseImpl) {
+      await (_proxyCoreImpl as ProxyCoreBaseImpl).uninstallWindowsService();
+    }
+  }
+
   /// Gets the CPU usage of the core
   ///
   /// **iOS**: Queries CPU usage via method channel

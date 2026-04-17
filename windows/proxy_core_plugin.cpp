@@ -5,12 +5,18 @@
 #include <flutter/standard_method_codec.h>
 
 #include <windows.h>
+#include <shellapi.h>
+#include <winsvc.h>
 
 #include <atomic>
 #include <memory>
 #include <mutex>
 #include <sstream>
 #include <string>
+#include <vector>
+
+#pragma comment(lib, "advapi32.lib")
+#pragma comment(lib, "shell32.lib")
 
 namespace proxy_core {
 
@@ -161,6 +167,80 @@ int GetIntArg(const flutter::EncodableMap* args,
   return fallback;
 }
 
+// Path to guardexsvc.exe sitting next to the running host .exe.
+std::wstring GuardexSvcPath() {
+  wchar_t buf[MAX_PATH];
+  DWORD n = GetModuleFileNameW(nullptr, buf, MAX_PATH);
+  if (n == 0 || n == MAX_PATH) return L"";
+  std::wstring path(buf, n);
+  auto slash = path.find_last_of(L"\\/");
+  if (slash == std::wstring::npos) return L"";
+  return path.substr(0, slash + 1) + L"guardexsvc.exe";
+}
+
+struct ServiceStatus {
+  bool installed = false;
+  bool running = false;
+};
+
+ServiceStatus QueryGuardexService() {
+  ServiceStatus st;
+  SC_HANDLE scm = OpenSCManagerW(nullptr, nullptr, SC_MANAGER_CONNECT);
+  if (!scm) return st;
+  SC_HANDLE svc = OpenServiceW(scm, L"GuardexVPN", SERVICE_QUERY_STATUS);
+  if (!svc) {
+    CloseServiceHandle(scm);
+    return st;
+  }
+  st.installed = true;
+  SERVICE_STATUS s{};
+  if (QueryServiceStatus(svc, &s)) {
+    st.running = (s.dwCurrentState == SERVICE_RUNNING ||
+                  s.dwCurrentState == SERVICE_START_PENDING);
+  }
+  CloseServiceHandle(svc);
+  CloseServiceHandle(scm);
+  return st;
+}
+
+// RunElevated invokes guardexsvc.exe with the given verb/argument via
+// ShellExecuteExW + "runas" so the user sees exactly one UAC prompt.
+// Waits for the child to exit and returns its exit code, or -1 if the
+// elevation dialog was cancelled.
+int RunElevated(const std::wstring& args) {
+  std::wstring exe = GuardexSvcPath();
+  if (exe.empty()) return -1;
+
+  SHELLEXECUTEINFOW sei{};
+  sei.cbSize = sizeof(sei);
+  sei.fMask = SEE_MASK_NOCLOSEPROCESS | SEE_MASK_NO_CONSOLE;
+  sei.lpVerb = L"runas";
+  sei.lpFile = exe.c_str();
+  sei.lpParameters = args.c_str();
+  sei.nShow = SW_HIDE;
+
+  if (!ShellExecuteExW(&sei) || !sei.hProcess) {
+    return -1;
+  }
+  WaitForSingleObject(sei.hProcess, INFINITE);
+  DWORD exitCode = 1;
+  GetExitCodeProcess(sei.hProcess, &exitCode);
+  CloseHandle(sei.hProcess);
+  return static_cast<int>(exitCode);
+}
+
+// WaitForService polls the SCM until the service is RUNNING or a timeout
+// elapses. Needed because ShellExecuteEx returns as soon as the child
+// starts the service, not once the service reaches RUNNING state.
+bool WaitForServiceRunning(int timeout_ms) {
+  const int step_ms = 200;
+  for (int waited = 0; waited <= timeout_ms; waited += step_ms) {
+    if (QueryGuardexService().running) return true;
+    Sleep(step_ms);
+  }
+  return false;
+}
+
 }  // namespace
 
 // static
@@ -192,6 +272,73 @@ void ProxyCorePlugin::HandleMethodCall(
       std::get_if<flutter::EncodableMap>(method_call.arguments());
 
   if (method == "prepare") {
+    result->Success(flutter::EncodableValue(nullptr));
+    return;
+  }
+
+  if (method == "serviceStatus") {
+    ServiceStatus st = QueryGuardexService();
+    flutter::EncodableMap out;
+    out[flutter::EncodableValue("installed")] =
+        flutter::EncodableValue(st.installed);
+    out[flutter::EncodableValue("running")] =
+        flutter::EncodableValue(st.running);
+    result->Success(flutter::EncodableValue(out));
+    return;
+  }
+
+  if (method == "ensureService") {
+    ServiceStatus st = QueryGuardexService();
+    if (!st.installed) {
+      int rc = RunElevated(L"install");
+      if (rc == -1) {
+        result->Error("elevation_cancelled",
+                      "user declined UAC prompt for service install");
+        return;
+      }
+      if (rc != 0) {
+        std::ostringstream msg;
+        msg << "guardexsvc install exited with " << rc;
+        result->Error("install_failed", msg.str());
+        return;
+      }
+    }
+    st = QueryGuardexService();
+    if (!st.running) {
+      int rc = RunElevated(L"start");
+      if (rc == -1) {
+        result->Error("elevation_cancelled",
+                      "user declined UAC prompt for service start");
+        return;
+      }
+      if (rc != 0) {
+        std::ostringstream msg;
+        msg << "guardexsvc start exited with " << rc;
+        result->Error("start_failed", msg.str());
+        return;
+      }
+    }
+    if (!WaitForServiceRunning(5000)) {
+      result->Error("not_running",
+                    "service did not reach RUNNING within 5s");
+      return;
+    }
+    result->Success(flutter::EncodableValue(nullptr));
+    return;
+  }
+
+  if (method == "uninstallService") {
+    int rc = RunElevated(L"uninstall");
+    if (rc == -1) {
+      result->Error("elevation_cancelled", "user declined UAC prompt");
+      return;
+    }
+    if (rc != 0) {
+      std::ostringstream msg;
+      msg << "guardexsvc uninstall exited with " << rc;
+      result->Error("uninstall_failed", msg.str());
+      return;
+    }
     result->Success(flutter::EncodableValue(nullptr));
     return;
   }
