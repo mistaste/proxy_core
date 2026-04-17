@@ -83,6 +83,11 @@ func setupFileLog() {
 	}
 	log.SetOutput(f)
 	log.SetFlags(log.LstdFlags | log.Lmicroseconds)
+	
+	
+	
+	os.Stdout = f
+	os.Stderr = f
 }
 
 func main() {
