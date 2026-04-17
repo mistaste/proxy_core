@@ -18,6 +18,7 @@ import (
 	"github.com/Microsoft/go-winio"
 
 	"segment/libtun"
+	singbox "segment/singbox_win"
 )
 
 
@@ -167,17 +168,20 @@ func (s *Server) dispatch(req *Request) Response {
 		if p.Proxy == "" {
 			return Response{ID: req.ID, OK: false, Error: "proxy is required"}
 		}
-		if err := libtun.StartWintun(p.Adapter, p.Proxy, p.Server, p.MTU); err != nil {
+		
+		
+		
+		if err := singbox.StartBridge(p.Adapter, p.Proxy, p.Server, p.MTU); err != nil {
 			return Response{ID: req.ID, OK: false, Error: err.Error()}
 		}
 		return Response{ID: req.ID, OK: true}
 
 	case "stop_vpn":
-		libtun.Stop()
+		singbox.StopBridge()
 		return Response{ID: req.ID, OK: true}
 
 	case "is_running":
-		return Response{ID: req.ID, OK: true, Result: libtun.IsStarted()}
+		return Response{ID: req.ID, OK: true, Result: singbox.IsStarted()}
 
 	default:
 		return Response{ID: req.ID, OK: false, Error: "unknown method: " + req.Method}
@@ -187,6 +191,12 @@ func (s *Server) dispatch(req *Request) Response {
 
 
 func StopActiveSession() {
+	if singbox.IsStarted() {
+		singbox.StopBridge()
+	}
+	
+	
+	
 	if libtun.IsStarted() {
 		libtun.Stop()
 	}
