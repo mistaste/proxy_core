@@ -57,4 +57,30 @@ mixin class VpnModeChannelMixin {
     await _prepareVpnProfile();
     await stopVPN();
   }
+
+  
+  
+  
+  
+  
+  
+  
+  
+  Future<void> startVPNWindows({
+    required String adapterName,
+    required String proxyAddress,
+    required String serverIP,
+    int mtu = 1500,
+  }) async {
+    await _methCh.invokeMethod(
+      'startVPNWindows',
+      <String, dynamic>{
+        'adapterName': adapterName,
+        'proxyAddress': proxyAddress,
+        'serverIP': serverIP,
+        'mtu': mtu,
+      },
+    );
+    await setVpnStatus();
+  }
 }

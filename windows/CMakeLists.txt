@@ -1,46 +1,56 @@
 cmake_minimum_required(VERSION 3.14)
 
-# Project-level configuration.
 set(PROJECT_NAME "proxy_core")
 project(${PROJECT_NAME} LANGUAGES CXX)
 
-# Path to your ZIP file.
-set(PROXY_CORE_ZIP "${CMAKE_CURRENT_SOURCE_DIR}/libproxy_core.zip")
+# Name used for the Flutter plugin shared library.
+set(PLUGIN_NAME "proxy_core_plugin")
 
-# Path to the unzipped DLL file.
+# Unzip libproxy_core.zip (shipped Go shared library) once per configure.
+set(PROXY_CORE_ZIP "${CMAKE_CURRENT_SOURCE_DIR}/libproxy_core.zip")
 set(PROXY_CORE_DLL "${CMAKE_CURRENT_SOURCE_DIR}/libproxy_core.dll")
 
-# Ensure the ZIP file exists before proceeding.
 if(NOT EXISTS ${PROXY_CORE_ZIP})
-    message(FATAL_ERROR "ZIP file libproxy_core.zip not found at ${CMAKE_CURRENT_SOURCE_DIR}")
+    message(FATAL_ERROR "libproxy_core.zip not found at ${PROXY_CORE_ZIP}")
 endif()
 
-# Unzip the ZIP file regardless of the DLL's existence.
-message(STATUS "Unzipping libproxy_core.zip...")
+message(STATUS "Extracting libproxy_core.zip...")
 execute_process(
-        COMMAND ${CMAKE_COMMAND} -E tar xvf "${PROXY_CORE_ZIP}"
-        WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
-        RESULT_VARIABLE UNZIP_RESULT
+    COMMAND ${CMAKE_COMMAND} -E tar xvf "${PROXY_CORE_ZIP}"
+    WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+    RESULT_VARIABLE UNZIP_RESULT
 )
 if(NOT UNZIP_RESULT EQUAL 0)
     message(FATAL_ERROR "Failed to unzip libproxy_core.zip")
 endif()
 
-# Handle different build configurations (Debug, Release)
-if(CMAKE_BUILD_TYPE STREQUAL "debug")
-    set(FLUTTER_BINARY_DIR "${CMAKE_BINARY_DIR}/runner/Debug")
-elseif(CMAKE_BUILD_TYPE STREQUAL "release")
-    set(FLUTTER_BINARY_DIR "${CMAKE_BINARY_DIR}/runner/Release")
-else()
-    # We assume that it's building in debug mode by default.
-    set(FLUTTER_BINARY_DIR "${CMAKE_BINARY_DIR}/runner/Debug")
-endif()
-
-# Ensure that the output directory exists.
-file(MAKE_DIRECTORY ${FLUTTER_BINARY_DIR})
-
-# Dummy target to allow the custom command to attach
-add_custom_target(copy_proxy_core_dll ALL
-        COMMAND ${CMAKE_COMMAND} -E copy_if_different "${PROXY_CORE_DLL}" "${FLUTTER_BINARY_DIR}/libproxy_core.dll"
-        COMMENT "Copying libproxy_core.dll to the build output directory: ${FLUTTER_BINARY_DIR}"
+add_library(${PLUGIN_NAME} SHARED
+    "proxy_core_plugin.cpp"
+    "proxy_core_plugin_c_api.cpp"
 )
+
+apply_standard_settings(${PLUGIN_NAME})
+set_target_properties(${PLUGIN_NAME} PROPERTIES
+    CXX_VISIBILITY_PRESET hidden
+)
+target_compile_definitions(${PLUGIN_NAME} PRIVATE FLUTTER_PLUGIN_IMPL)
+target_include_directories(${PLUGIN_NAME} INTERFACE
+    "${CMAKE_CURRENT_SOURCE_DIR}/include"
+)
+target_link_libraries(${PLUGIN_NAME} PRIVATE flutter flutter_wrapper_plugin)
+
+# Bundle runtime libraries next to the host binary.
+set(proxy_core_bundled_libraries
+    "${PROXY_CORE_DLL}"
+    PARENT_SCOPE
+)
+
+# If wintun.dll is shipped alongside, include it too.
+set(WINTUN_DLL "${CMAKE_CURRENT_SOURCE_DIR}/wintun.dll")
+if(EXISTS ${WINTUN_DLL})
+    set(proxy_core_bundled_libraries
+        "${PROXY_CORE_DLL}"
+        "${WINTUN_DLL}"
+        PARENT_SCOPE
+    )
+endif()
