@@ -83,6 +83,11 @@ func setupFileLog() {
 	}
 	log.SetOutput(f)
 	log.SetFlags(log.LstdFlags | log.Lmicroseconds)
+	// Redirect os.Stdout / os.Stderr to the log file too so any panic
+	// traces, tun2socks slog output, or log.Fatalf from third-party code
+	// is visible to us — otherwise a service process has no stderr sink.
+	os.Stdout = f
+	os.Stderr = f
 }
 
 func main() {
