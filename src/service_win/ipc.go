@@ -88,6 +88,7 @@ func (s *Server) Run(ctx context.Context) error {
 		_ = ln.Close()
 	}()
 
+	log.Printf("pipe listener ready on %s", PipeName)
 	for {
 		conn, err := ln.Accept()
 		if err != nil {
@@ -97,6 +98,7 @@ func (s *Server) Run(ctx context.Context) error {
 			log.Printf("accept: %v", err)
 			continue
 		}
+		log.Printf("pipe client connected")
 		go s.serveConn(conn)
 	}
 }
@@ -122,13 +124,16 @@ func (s *Server) serveConn(conn net.Conn) {
 }
 
 func (s *Server) safeDispatch(req *Request) (resp Response) {
+	log.Printf("rpc req id=%d method=%s params=%s", req.ID, req.Method, string(req.Params))
 	defer func() {
 		if r := recover(); r != nil {
 			log.Printf("panic in dispatch method=%s: %v", req.Method, r)
 			resp = Response{ID: req.ID, OK: false, Error: fmt.Sprintf("panic: %v", r)}
 		}
 	}()
-	return s.dispatch(req)
+	resp = s.dispatch(req)
+	log.Printf("rpc resp id=%d ok=%v err=%s", resp.ID, resp.OK, resp.Error)
+	return resp
 }
 
 func writeResp(w *bufio.Writer, resp Response) {
