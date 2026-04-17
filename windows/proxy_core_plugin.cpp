@@ -376,42 +376,55 @@ void ProxyCorePlugin::HandleMethodCall(
            << "\"proxy\":\"" << EscapeJson(proxy) << "\","
            << "\"server\":\"" << EscapeJson(server) << "\","
            << "\"mtu\":" << mtu << "}";
+    std::string params_s = params.str();
 
-    RpcResult rpc = CallService("start_vpn", params.str());
-    if (!rpc.ok) {
-      result->Error("rpc_failed", rpc.error);
-      return;
-    }
-    if (!JsonOK(rpc.body)) {
-      result->Error("start_failed", JsonError(rpc.body));
-      return;
-    }
-    // Preserve mixin fd return type on Android (int fd). Windows never
-    // has a real fd so just return 0.
-    result->Success(flutter::EncodableValue(static_cast<int32_t>(0)));
+    std::shared_ptr<flutter::MethodResult<flutter::EncodableValue>>
+        shared_result(std::move(result));
+    std::thread([shared_result, params_s]() {
+      RpcResult rpc = CallService("start_vpn", params_s);
+      if (!rpc.ok) {
+        shared_result->Error("rpc_failed", rpc.error);
+        return;
+      }
+      if (!JsonOK(rpc.body)) {
+        shared_result->Error("start_failed", JsonError(rpc.body));
+        return;
+      }
+      // Preserve mixin fd return type on Android (int fd). Windows never
+      // has a real fd so just return 0.
+      shared_result->Success(flutter::EncodableValue(static_cast<int32_t>(0)));
+    }).detach();
     return;
   }
 
   if (method == "stopVPN" || method == "stopVPNWindows") {
-    RpcResult rpc = CallService("stop_vpn", "");
-    if (!rpc.ok) {
-      result->Error("rpc_failed", rpc.error);
-      return;
-    }
-    result->Success(flutter::EncodableValue(nullptr));
+    std::shared_ptr<flutter::MethodResult<flutter::EncodableValue>>
+        shared_result(std::move(result));
+    std::thread([shared_result]() {
+      RpcResult rpc = CallService("stop_vpn", "");
+      if (!rpc.ok) {
+        shared_result->Error("rpc_failed", rpc.error);
+        return;
+      }
+      shared_result->Success(flutter::EncodableValue(nullptr));
+    }).detach();
     return;
   }
 
   if (method == "isVPNRunning") {
-    RpcResult rpc = CallService("is_running", "");
-    if (!rpc.ok) {
-      // If the service is not reachable, report "not running" rather
-      // than surfacing a transport error — the UI polls this routinely
-      // and should degrade gracefully.
-      result->Success(flutter::EncodableValue(false));
-      return;
-    }
-    result->Success(flutter::EncodableValue(JsonResultBool(rpc.body)));
+    std::shared_ptr<flutter::MethodResult<flutter::EncodableValue>>
+        shared_result(std::move(result));
+    std::thread([shared_result]() {
+      RpcResult rpc = CallService("is_running", "");
+      if (!rpc.ok) {
+        // If the service is not reachable, report "not running" rather
+        // than surfacing a transport error — the UI polls this routinely
+        // and should degrade gracefully.
+        shared_result->Success(flutter::EncodableValue(false));
+        return;
+      }
+      shared_result->Success(flutter::EncodableValue(JsonResultBool(rpc.body)));
+    }).detach();
     return;
   }
 
