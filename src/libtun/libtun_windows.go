@@ -55,7 +55,9 @@ func StartWintun(adapterName, proxyAddress, serverIP string, mtu int) error {
 		mtu = 1500
 	}
 
-	key.Device = fmt.Sprintf("wintun://%s", adapterName)
+	
+	
+	key.Device = fmt.Sprintf("tun://%s", adapterName)
 	key.Proxy = fmt.Sprintf("socks5://%s", proxyAddress)
 	key.MTU = mtu
 	key.LogLevel = "info"
