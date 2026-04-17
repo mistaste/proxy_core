@@ -73,6 +73,9 @@ func StartWintun(adapterName, proxyAddress, serverIP string, mtu int) error {
 	}
 
 	if serverIP != "" && winState.origGateway != "" {
+		
+		_ = runNetsh("interface", "ipv4", "delete", "route",
+			serverIP+"/32", "interface="+winState.origInterfaceIdx)
 		if err := runNetsh("interface", "ipv4", "add", "route",
 			serverIP+"/32", "interface="+winState.origInterfaceIdx,
 			"nexthop="+winState.origGateway, "metric=1", "store=active"); err == nil {
@@ -86,6 +89,10 @@ func StartWintun(adapterName, proxyAddress, serverIP string, mtu int) error {
 		return fmt.Errorf("configure adapter ip: %w", err)
 	}
 
+	
+	
+	_ = runNetsh("interface", "ipv4", "delete", "route", "0.0.0.0/0",
+		"interface="+adapterName)
 	if err := runNetsh("interface", "ipv4", "add", "route", "0.0.0.0/0",
 		"interface="+adapterName, "metric=1", "store=active"); err != nil {
 		engine.Stop()
