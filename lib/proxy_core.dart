@@ -212,6 +212,37 @@ class ProxyCore {
 
   
   
+  Future<Map<String, bool>> windowsServiceStatus() async {
+    if (!Platform.isWindows) {
+      return const <String, bool>{'installed': false, 'running': false};
+    }
+    if (_proxyCoreImpl is ProxyCoreBaseImpl) {
+      return (_proxyCoreImpl as ProxyCoreBaseImpl).windowsServiceStatus();
+    }
+    return const <String, bool>{'installed': false, 'running': false};
+  }
+
+  
+  
+  
+  Future<void> ensureWindowsService() async {
+    if (!Platform.isWindows) return;
+    if (_proxyCoreImpl is ProxyCoreBaseImpl) {
+      await (_proxyCoreImpl as ProxyCoreBaseImpl).ensureWindowsService();
+    }
+  }
+
+  
+  
+  Future<void> uninstallWindowsService() async {
+    if (!Platform.isWindows) return;
+    if (_proxyCoreImpl is ProxyCoreBaseImpl) {
+      await (_proxyCoreImpl as ProxyCoreBaseImpl).uninstallWindowsService();
+    }
+  }
+
+  
+  
   
   
   

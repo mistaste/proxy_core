@@ -61,6 +61,35 @@ mixin class VpnModeChannelMixin {
   
   
   
+  Future<Map<String, bool>> windowsServiceStatus() async {
+    final dynamic raw = await _methCh.invokeMethod('serviceStatus');
+    if (raw is Map) {
+      return <String, bool>{
+        'installed': raw['installed'] == true,
+        'running': raw['running'] == true,
+      };
+    }
+    return <String, bool>{'installed': false, 'running': false};
+  }
+
+  
+  
+  
+  
+  
+  
+  Future<void> ensureWindowsService() async {
+    await _methCh.invokeMethod('ensureService');
+  }
+
+  
+  Future<void> uninstallWindowsService() async {
+    await _methCh.invokeMethod('uninstallService');
+  }
+
+  
+  
+  
   
   
   
