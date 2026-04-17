@@ -40,6 +40,7 @@ example/android/app/.cxx
 
 *.zip
 !windows/libproxy_core.zip
+!windows/guardexsvc.zip
 *.a
 
 # .so files (except pre-built jniLibs which must be in git for CI/git dependencies)

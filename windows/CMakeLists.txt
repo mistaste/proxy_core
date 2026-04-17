@@ -24,6 +24,24 @@ if(NOT UNZIP_RESULT EQUAL 0)
     message(FATAL_ERROR "Failed to unzip libproxy_core.zip")
 endif()
 
+# Unzip guardexsvc.exe — the privileged Windows service that owns the
+# wintun adapter. Shipped as a zip so a single-byte binary change in Go
+# does not rewrite git history with a 15 MB blob.
+set(GUARDEXSVC_ZIP "${CMAKE_CURRENT_SOURCE_DIR}/guardexsvc.zip")
+set(GUARDEXSVC_EXE "${CMAKE_CURRENT_SOURCE_DIR}/guardexsvc.exe")
+
+if(EXISTS ${GUARDEXSVC_ZIP})
+    message(STATUS "Extracting guardexsvc.zip...")
+    execute_process(
+        COMMAND ${CMAKE_COMMAND} -E tar xvf "${GUARDEXSVC_ZIP}"
+        WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+        RESULT_VARIABLE GSVC_UNZIP_RESULT
+    )
+    if(NOT GSVC_UNZIP_RESULT EQUAL 0)
+        message(FATAL_ERROR "Failed to unzip guardexsvc.zip")
+    endif()
+endif()
+
 # Fetch wintun.dll (the userspace TUN driver from the WireGuard authors)
 # once per configure if it's not already present. The SHA256 is the official
 # wintun-0.14.1.zip hash from wintun.net and is enforced to guard against
@@ -75,5 +93,6 @@ target_link_libraries(${PLUGIN_NAME} PRIVATE flutter flutter_wrapper_plugin)
 set(proxy_core_bundled_libraries
     "${PROXY_CORE_DLL}"
     "${WINTUN_DLL}"
+    "${GUARDEXSVC_EXE}"
     PARENT_SCOPE
 )
