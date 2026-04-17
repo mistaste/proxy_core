@@ -171,6 +171,45 @@ class ProxyCore {
   /// Returns the memory usage in bytes.
   Future<String> get memoryUsage => _proxyCoreImpl.getMemoryUsage();
 
+  /// Starts the wintun-based TUN engine on Windows so default traffic
+  /// is routed into the local SOCKS5 proxy that the core is serving.
+  ///
+  /// Requires the core to already be running in proxy mode via [start]
+  /// (i.e. the xray instance is listening on [proxyPort]).
+  ///
+  /// - [adapterName] — wintun adapter name (e.g. "Guardex").
+  /// - [proxyAddress] — "host:port" of the local SOCKS5 proxy.
+  /// - [serverIP] — remote VPN server IP, excluded from the tunnel so
+  ///   the encrypted link itself does not loop through the TUN.
+  /// - [mtu] — link MTU; default 1500.
+  ///
+  /// No-op on non-Windows platforms.
+  Future<void> startWindowsTun({
+    required String adapterName,
+    required String proxyAddress,
+    required String serverIP,
+    int mtu = 1500,
+  }) async {
+    if (!Platform.isWindows) return;
+    if (_proxyCoreImpl is ProxyCoreBaseImpl) {
+      await (_proxyCoreImpl as ProxyCoreBaseImpl).startVPNWindows(
+        adapterName: adapterName,
+        proxyAddress: proxyAddress,
+        serverIP: serverIP,
+        mtu: mtu,
+      );
+    }
+  }
+
+  /// Stops the wintun-based TUN engine on Windows and tears down the
+  /// routes it installed. No-op on non-Windows platforms.
+  Future<void> stopWindowsTun() async {
+    if (!Platform.isWindows) return;
+    if (_proxyCoreImpl is ProxyCoreBaseImpl) {
+      await (_proxyCoreImpl as ProxyCoreBaseImpl).stopVPN();
+    }
+  }
+
   /// Gets the CPU usage of the core
   ///
   /// **iOS**: Queries CPU usage via method channel
