@@ -4,6 +4,7 @@
 #include <flutter/method_channel.h>
 #include <flutter/plugin_registrar_windows.h>
 
+#include <atomic>
 #include <memory>
 
 namespace proxy_core {
@@ -22,6 +23,11 @@ class ProxyCorePlugin : public flutter::Plugin {
   void HandleMethodCall(
       const flutter::MethodCall<flutter::EncodableValue>& method_call,
       std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result);
+
+  // Shared with all detached worker threads. Set to false in the destructor
+  // so threads can bail out before posting a result to a dead channel.
+  std::shared_ptr<std::atomic<bool>> alive_ =
+      std::make_shared<std::atomic<bool>>(true);
 };
 
 }  // namespace proxy_core
