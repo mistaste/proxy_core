@@ -145,13 +145,19 @@ func writeResp(w *bufio.Writer, resp Response) {
 }
 
 func (s *Server) dispatch(req *Request) Response {
+	// ping and is_running never touch mutable TUN state — keep them lock-free
+	// so heartbeats are not blocked while start_vpn is running.
+	switch req.Method {
+	case "ping":
+		return Response{ID: req.ID, OK: true, Result: "pong"}
+	case "is_running":
+		return Response{ID: req.ID, OK: true, Result: singbox.IsStarted()}
+	}
+
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
 	switch req.Method {
-	case "ping":
-		return Response{ID: req.ID, OK: true, Result: "pong"}
-
 	case "start_vpn":
 		var p StartVPNParams
 		if len(req.Params) > 0 {
@@ -179,9 +185,6 @@ func (s *Server) dispatch(req *Request) Response {
 	case "stop_vpn":
 		singbox.StopBridge()
 		return Response{ID: req.ID, OK: true}
-
-	case "is_running":
-		return Response{ID: req.ID, OK: true, Result: singbox.IsStarted()}
 
 	default:
 		return Response{ID: req.ID, OK: false, Error: "unknown method: " + req.Method}
