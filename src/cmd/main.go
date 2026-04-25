@@ -28,6 +28,7 @@ func StartVPNWindows(adapterName *C.char, proxyAddress *C.char, serverIP *C.char
 		C.GoString(proxyAddress),
 		C.GoString(serverIP),
 		int(mtu),
+		nil, 
 	)
 	if err != nil {
 		return 1

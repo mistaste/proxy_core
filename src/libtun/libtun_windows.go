@@ -42,7 +42,9 @@ func Start(tunFD int, proxyAddress string) error {
 
 
 
-func StartWintun(adapterName, proxyAddress, serverIP string, mtu int) error {
+
+
+func StartWintun(adapterName, proxyAddress, serverIP string, mtu int, dns []string) error {
 	mu.Lock()
 	defer mu.Unlock()
 
@@ -96,7 +98,7 @@ func StartWintun(adapterName, proxyAddress, serverIP string, mtu int) error {
 		}
 	}
 
-	if err := configureAdapterIP(adapterName); err != nil {
+	if err := configureAdapterIP(adapterName, dns); err != nil {
 		engine.Stop()
 		platformRollback()
 		return fmt.Errorf("configure adapter ip: %w", err)
@@ -120,18 +122,24 @@ func StartWintun(adapterName, proxyAddress, serverIP string, mtu int) error {
 
 
 
-func configureAdapterIP(adapterName string) error {
+
+func configureAdapterIP(adapterName string, dns []string) error {
 	if err := runNetsh("interface", "ipv4", "set", "address",
-		"name="+adapterName, "source=static", "addr=10.200.0.2",
-		"mask=255.255.255.0", "gateway=10.200.0.1", "gwmetric=1"); err != nil {
+		"name="+adapterName, "source=static", "addr=100.100.0.2",
+		"mask=255.255.255.0", "gateway=100.100.0.1", "gwmetric=1"); err != nil {
 		return err
 	}
+	if len(dns) == 0 {
+		dns = []string{"1.1.1.1", "8.8.8.8"}
+	}
 	_ = runNetsh("interface", "ipv4", "set", "dnsservers",
-		"name="+adapterName, "source=static", "address=1.1.1.1",
+		"name="+adapterName, "source=static", "address="+dns[0],
 		"register=none", "validate=no")
-	_ = runNetsh("interface", "ipv4", "add", "dnsservers",
-		"name="+adapterName, "address=8.8.8.8", "index=2",
-		"validate=no")
+	for idx, d := range dns[1:] {
+		_ = runNetsh("interface", "ipv4", "add", "dnsservers",
+			"name="+adapterName, "address="+d,
+			fmt.Sprintf("index=%d", idx+2), "validate=no")
+	}
 	return nil
 }
 

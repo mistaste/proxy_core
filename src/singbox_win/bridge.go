@@ -165,7 +165,7 @@ func buildConfig(adapter, socksHost string, socksPort, mtu int) []byte {
     "type": "tun",
     "tag": "tun-in",
     "interface_name": %q,
-    "address": ["10.200.0.2/24"],
+    "address": ["100.100.0.2/24"],
     "mtu": %d,
     "auto_route": true,
     "strict_route": false,
