@@ -320,7 +320,9 @@ void ProxyCorePlugin::RegisterWithRegistrar(
 }
 
 ProxyCorePlugin::ProxyCorePlugin() {}
-ProxyCorePlugin::~ProxyCorePlugin() {}
+ProxyCorePlugin::~ProxyCorePlugin() {
+  alive_->store(false);
+}
 
 void ProxyCorePlugin::HandleMethodCall(
     const flutter::MethodCall<flutter::EncodableValue>& method_call,
@@ -352,24 +354,24 @@ void ProxyCorePlugin::HandleMethodCall(
     
     std::shared_ptr<flutter::MethodResult<flutter::EncodableValue>>
         shared_result(std::move(result));
-    std::thread([shared_result]() {
+    std::thread([shared_result, alive = alive_]() {
       ServiceStatus st = QueryGuardexService();
       if (!st.installed) {
         int rc = RunElevated(L"install");
         if (rc == -1) {
-          shared_result->Error("elevation_cancelled",
+          if (alive->load()) shared_result->Error("elevation_cancelled",
                                "user declined UAC prompt for service install");
           return;
         }
         if (rc == -2) {
-          shared_result->Error("install_timeout",
+          if (alive->load()) shared_result->Error("install_timeout",
                                "guardexsvc install timed out after 30s");
           return;
         }
         if (rc != 0) {
           std::ostringstream msg;
           msg << "guardexsvc install exited with " << rc;
-          shared_result->Error("install_failed", msg.str());
+          if (alive->load()) shared_result->Error("install_failed", msg.str());
           return;
         }
       }
@@ -377,28 +379,28 @@ void ProxyCorePlugin::HandleMethodCall(
       if (!st.running) {
         int rc = RunElevated(L"start");
         if (rc == -1) {
-          shared_result->Error("elevation_cancelled",
+          if (alive->load()) shared_result->Error("elevation_cancelled",
                                "user declined UAC prompt for service start");
           return;
         }
         if (rc == -2) {
-          shared_result->Error("start_timeout",
+          if (alive->load()) shared_result->Error("start_timeout",
                                "guardexsvc start timed out after 30s");
           return;
         }
         if (rc != 0) {
           std::ostringstream msg;
           msg << "guardexsvc start exited with " << rc;
-          shared_result->Error("start_failed", msg.str());
+          if (alive->load()) shared_result->Error("start_failed", msg.str());
           return;
         }
       }
       if (!WaitForServiceRunning(5000)) {
-        shared_result->Error("not_running",
+        if (alive->load()) shared_result->Error("not_running",
                              "service did not reach RUNNING within 5s");
         return;
       }
-      shared_result->Success(flutter::EncodableValue(nullptr));
+      if (alive->load()) shared_result->Success(flutter::EncodableValue(nullptr));
     }).detach();
     return;
   }
@@ -406,20 +408,20 @@ void ProxyCorePlugin::HandleMethodCall(
   if (method == "uninstallService") {
     std::shared_ptr<flutter::MethodResult<flutter::EncodableValue>>
         shared_result(std::move(result));
-    std::thread([shared_result]() {
+    std::thread([shared_result, alive = alive_]() {
       int rc = RunElevated(L"uninstall");
       if (rc == -1) {
-        shared_result->Error("elevation_cancelled",
+        if (alive->load()) shared_result->Error("elevation_cancelled",
                              "user declined UAC prompt");
         return;
       }
       if (rc != 0) {
         std::ostringstream msg;
         msg << "guardexsvc uninstall exited with " << rc;
-        shared_result->Error("uninstall_failed", msg.str());
+        if (alive->load()) shared_result->Error("uninstall_failed", msg.str());
         return;
       }
-      shared_result->Success(flutter::EncodableValue(nullptr));
+      if (alive->load()) shared_result->Success(flutter::EncodableValue(nullptr));
     }).detach();
     return;
   }
@@ -447,8 +449,9 @@ void ProxyCorePlugin::HandleMethodCall(
 
     std::shared_ptr<flutter::MethodResult<flutter::EncodableValue>>
         shared_result(std::move(result));
-    std::thread([shared_result, params_s]() {
+    std::thread([shared_result, params_s, alive = alive_]() {
       RpcResult rpc = CallService("start_vpn", params_s);
+      if (!alive->load()) return;
       if (!rpc.ok) {
         shared_result->Error("rpc_failed", rpc.error);
         return;
@@ -467,8 +470,9 @@ void ProxyCorePlugin::HandleMethodCall(
   if (method == "stopVPN" || method == "stopVPNWindows") {
     std::shared_ptr<flutter::MethodResult<flutter::EncodableValue>>
         shared_result(std::move(result));
-    std::thread([shared_result]() {
+    std::thread([shared_result, alive = alive_]() {
       RpcResult rpc = CallService("stop_vpn", "");
+      if (!alive->load()) return;
       if (!rpc.ok) {
         shared_result->Error("rpc_failed", rpc.error);
         return;
@@ -481,8 +485,9 @@ void ProxyCorePlugin::HandleMethodCall(
   if (method == "isVPNRunning") {
     std::shared_ptr<flutter::MethodResult<flutter::EncodableValue>>
         shared_result(std::move(result));
-    std::thread([shared_result]() {
+    std::thread([shared_result, alive = alive_]() {
       RpcResult rpc = CallService("is_running", "");
+      if (!alive->load()) return;
       if (!rpc.ok) {
         
         
