@@ -14,6 +14,7 @@ import (
 	"log"
 	"net"
 	"sync"
+	"time"
 
 	"github.com/Microsoft/go-winio"
 
@@ -97,6 +98,13 @@ func (s *Server) Run(ctx context.Context) error {
 				return nil
 			}
 			log.Printf("accept: %v", err)
+			// Backoff to avoid busy-spinning when the pipe is temporarily
+			// unavailable (e.g. SCM restart). Cap at 250ms.
+			select {
+			case <-ctx.Done():
+				return nil
+			case <-time.After(250 * time.Millisecond):
+			}
 			continue
 		}
 		log.Printf("pipe client connected")
@@ -104,13 +112,19 @@ func (s *Server) Run(ctx context.Context) error {
 	}
 }
 
+const maxRequestBytes = 64 * 1024 // 64 KB per request — guard against runaway clients
+
 func (s *Server) serveConn(conn net.Conn) {
 	defer conn.Close()
-	r := bufio.NewReader(conn)
+	r := bufio.NewReaderSize(conn, maxRequestBytes)
 	w := bufio.NewWriter(conn)
 
 	for {
 		line, err := r.ReadBytes('\n')
+		if len(line) > maxRequestBytes {
+			writeResp(w, Response{OK: false, Error: "request too large"})
+			return
+		}
 		if err != nil {
 			return
 		}

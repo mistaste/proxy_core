@@ -15,6 +15,8 @@ import (
 	"context"
 	"fmt"
 	"os/exec"
+	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"syscall"
@@ -190,6 +192,12 @@ func buildConfig(adapter, socksHost string, socksPort, mtu int) []byte {
 // adapter's name so we skip past it (sing-box may already have added
 // the default route via the tun, and we want the *original* gateway,
 // not the tun's).
+type routeCandidate struct {
+	gateway  string
+	ifaceName string
+	metric   int
+}
+
 func defaultRouteInfo(ourAdapter string) (gateway, ifaceName string, err error) {
 	cmd := exec.Command("route", "print", "0.0.0.0")
 	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
@@ -198,6 +206,7 @@ func defaultRouteInfo(ourAdapter string) (gateway, ifaceName string, err error) 
 		return "", "", err
 	}
 	// Format: "   0.0.0.0        0.0.0.0      <gw>      <iface_ip>   <metric>"
+	var candidates []routeCandidate
 	for _, line := range strings.Split(string(out), "\n") {
 		fields := strings.Fields(line)
 		if len(fields) < 5 || fields[0] != "0.0.0.0" || fields[1] != "0.0.0.0" {
@@ -213,9 +222,21 @@ func defaultRouteInfo(ourAdapter string) (gateway, ifaceName string, err error) 
 			// Skip our own tun's default route entry, keep looking.
 			continue
 		}
-		return gw, ifName, nil
+		metric := 9999
+		if m, e := strconv.Atoi(fields[4]); e == nil {
+			metric = m
+		}
+		candidates = append(candidates, routeCandidate{gateway: gw, ifaceName: ifName, metric: metric})
 	}
-	return "", "", fmt.Errorf("no original default route found")
+	if len(candidates) == 0 {
+		return "", "", fmt.Errorf("no original default route found")
+	}
+	// Pick the route with the lowest metric — avoids ECMP ambiguity when
+	// multiple adapters share a default route with different costs.
+	sort.Slice(candidates, func(i, j int) bool {
+		return candidates[i].metric < candidates[j].metric
+	})
+	return candidates[0].gateway, candidates[0].ifaceName, nil
 }
 
 func interfaceNameByIP(ip string) (string, error) {
