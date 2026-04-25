@@ -10,7 +10,6 @@
 
 #include <atomic>
 #include <memory>
-#include <mutex>
 #include <sstream>
 #include <string>
 #include <thread>
@@ -26,7 +25,6 @@ namespace {
 // Named pipe exposed by guardexsvc.exe. Must match service_win.PipeName.
 constexpr const char* kPipeName = R"(\\.\pipe\guardex-svc)";
 
-std::mutex g_pipe_mutex;
 std::atomic<uint64_t> g_next_id{1};
 
 // JSON escape for control chars and quote/backslash. Good enough for the
@@ -66,8 +64,8 @@ struct RpcResult {
 
 RpcResult CallService(const std::string& method_json,
                       const std::string& params_json_or_empty) {
-  std::lock_guard<std::mutex> lock(g_pipe_mutex);
-
+  // Each call opens its own pipe handle — no shared mutable state between
+  // concurrent callers, so no mutex is needed here.
   HANDLE pipe = INVALID_HANDLE_VALUE;
   // WaitNamedPipe + CreateFile retry loop — 3 attempts, 500ms each.
   for (int i = 0; i < 3; ++i) {
@@ -128,24 +126,78 @@ RpcResult CallService(const std::string& method_json,
   return r;
 }
 
-// Shallow JSON field scan — we only need a couple of primitive fields so
-// we avoid pulling in a full parser.
+// Minimal JSON response parser — avoids substring matches that could be
+// fooled by string values containing "ok\":true" or similar literals.
+// Only handles the flat {"id":N,"ok":bool,"error":"...","result":bool}
+// shape returned by service_win.
+struct ServiceResponse {
+  bool ok = false;
+  bool result_bool = false;
+  std::string error;
+};
+
+static ServiceResponse ParseServiceResponse(const std::string& s) {
+  ServiceResponse out;
+  size_t i = 0;
+  auto skipWS = [&]() {
+    while (i < s.size() &&
+           (s[i] == ' ' || s[i] == '\t' || s[i] == ',' || s[i] == '{' ||
+            s[i] == '}'))
+      ++i;
+  };
+  auto readString = [&]() -> std::string {
+    if (i >= s.size() || s[i] != '"') return "";
+    ++i;
+    std::string val;
+    while (i < s.size() && s[i] != '"') {
+      if (s[i] == '\\') {
+        ++i;
+        if (i < s.size()) val += s[i];
+      } else {
+        val += s[i];
+      }
+      ++i;
+    }
+    if (i < s.size()) ++i;  // skip closing "
+    return val;
+  };
+
+  while (i < s.size()) {
+    skipWS();
+    if (i >= s.size() || s[i] == '}') break;
+    if (s[i] != '"') { ++i; continue; }
+    std::string key = readString();
+    // skip ':'
+    while (i < s.size() && (s[i] == ' ' || s[i] == ':')) ++i;
+    // read value
+    if (i >= s.size()) break;
+    if (s[i] == '"') {
+      std::string val = readString();
+      if (key == "error") out.error = val;
+    } else if (s.size() - i >= 4 && s.substr(i, 4) == "true") {
+      if (key == "ok") out.ok = true;
+      if (key == "result") out.result_bool = true;
+      i += 4;
+    } else if (s.size() - i >= 5 && s.substr(i, 5) == "false") {
+      i += 5;
+    } else {
+      // number or null — skip to next delimiter
+      while (i < s.size() && s[i] != ',' && s[i] != '}') ++i;
+    }
+  }
+  return out;
+}
+
 bool JsonOK(const std::string& body) {
-  return body.find("\"ok\":true") != std::string::npos;
+  return ParseServiceResponse(body).ok;
 }
 
 std::string JsonError(const std::string& body) {
-  auto k = body.find("\"error\":");
-  if (k == std::string::npos) return "";
-  auto q1 = body.find('"', k + 8);
-  if (q1 == std::string::npos) return "";
-  auto q2 = body.find('"', q1 + 1);
-  if (q2 == std::string::npos) return "";
-  return body.substr(q1 + 1, q2 - q1 - 1);
+  return ParseServiceResponse(body).error;
 }
 
 bool JsonResultBool(const std::string& body) {
-  return body.find("\"result\":true") != std::string::npos;
+  return ParseServiceResponse(body).result_bool;
 }
 
 std::string GetStringArg(const flutter::EncodableMap* args,
@@ -223,8 +275,13 @@ int RunElevated(const std::wstring& args) {
   if (!ShellExecuteExW(&sei) || !sei.hProcess) {
     return -1;
   }
-  WaitForSingleObject(sei.hProcess, INFINITE);
+  DWORD wait = WaitForSingleObject(sei.hProcess, 30000);
   DWORD exitCode = 1;
+  if (wait == WAIT_TIMEOUT) {
+    TerminateProcess(sei.hProcess, 1);
+    CloseHandle(sei.hProcess);
+    return -2;  // caller maps this to a timeout error
+  }
   GetExitCodeProcess(sei.hProcess, &exitCode);
   CloseHandle(sei.hProcess);
   return static_cast<int>(exitCode);
@@ -304,6 +361,11 @@ void ProxyCorePlugin::HandleMethodCall(
                                "user declined UAC prompt for service install");
           return;
         }
+        if (rc == -2) {
+          shared_result->Error("install_timeout",
+                               "guardexsvc install timed out after 30s");
+          return;
+        }
         if (rc != 0) {
           std::ostringstream msg;
           msg << "guardexsvc install exited with " << rc;
@@ -317,6 +379,11 @@ void ProxyCorePlugin::HandleMethodCall(
         if (rc == -1) {
           shared_result->Error("elevation_cancelled",
                                "user declined UAC prompt for service start");
+          return;
+        }
+        if (rc == -2) {
+          shared_result->Error("start_timeout",
+                               "guardexsvc start timed out after 30s");
           return;
         }
         if (rc != 0) {
