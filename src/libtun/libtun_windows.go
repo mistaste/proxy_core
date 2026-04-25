@@ -4,6 +4,7 @@ package libtun
 
 import (
 	"fmt"
+	"log"
 	"net"
 	"os/exec"
 	"strings"
@@ -86,8 +87,12 @@ func StartWintun(adapterName, proxyAddress, serverIP string, mtu int, dns []stri
 
 	if serverIP != "" && winState.origGateway != "" {
 		
-		_ = runNetsh("interface", "ipv4", "delete", "route",
-			serverIP+"/32", "interface="+winState.origInterfaceIdx)
+		if err := runNetsh("interface", "ipv4", "delete", "route",
+			serverIP+"/32", "interface="+winState.origInterfaceIdx); err != nil {
+			if !strings.Contains(err.Error(), "Element not found") {
+				log.Printf("WARN: stale /32 cleanup: %v", err)
+			}
+		}
 		
 		
 		
