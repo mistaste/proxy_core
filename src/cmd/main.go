@@ -28,6 +28,7 @@ func StartVPNWindows(adapterName *C.char, proxyAddress *C.char, serverIP *C.char
 		C.GoString(proxyAddress),
 		C.GoString(serverIP),
 		int(mtu),
+		nil, // use default DNS (1.1.1.1, 8.8.8.8)
 	)
 	if err != nil {
 		return 1
