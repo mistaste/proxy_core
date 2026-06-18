@@ -149,7 +149,11 @@ class ProxyCoreVpnService : VpnService() {
             val builder = Builder().apply {
                 setSession("${this@ProxyCoreVpnService.packageName}-vpn")
                 setBlocking(false)
-                setMtu(1500)
+                // 1280 (IPv6 minimum) leaves headroom for VLESS+Reality+TCP
+                // encapsulation. At 1500 large QUIC datagrams (DF set) exceed the
+                // real path MTU once wrapped and are dropped → HTTP/3 sites fail
+                // with ERR_QUIC_PROTOCOL_ERROR while TCP (MSS-clamped) survives.
+                setMtu(1280)
 
                 addAddress(VpnMethods.PRIVATE_VLAN_4_CLIENT, 24)
                 addAddress(VpnMethods.PRIVATE_VLAN_6_CLIENT, 128)
